@@ -8,9 +8,10 @@ create table  novelas (
 );
 
 create table capitulos (
-    id_capitulo serial primary key,
+    capitulo_id serial primary key,
     id_novela int references novelas(id_novela),
     nombre varchar(255),
+    numero int,
     texto text 
 );
 

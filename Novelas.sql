@@ -16,8 +16,9 @@ create table capitulos (
 
 
 
-create or replace procedure fn_altaDeNovelas(ptitulo varchar, psinopsis text, pportada varchar)
-as
+create or replace function fn_altaDeNovelas(ptitulo varchar, psinopsis text, pportada varchar)
+return integer
+	as
 $$
 declare 
 v_id integer;

@@ -17,17 +17,17 @@ create table capitulos (
 
 
 create or replace function fn_altaDeNovelas(ptitulo varchar, psinopsis text, pportada varchar)
-return integer
-	as
+returns integer
+as
 $$
-declare 
+declare
 v_id integer;
-begin 
-	insert into novelas(titulo, sinopsis,portada) 
-	values (ptitulo,psinopsis,pportada);
-	returning id_novela into v_id;
-
-	return v_id;
+begin
+    insert into novelas(titulo, sinopsis,portada)
+    values (ptitulo,psinopsis,pportada)
+    RETURNING id_novela INTO v_id;
+    
+    return v_id;
 end;
 $$
 language plpgsql;

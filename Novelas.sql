@@ -16,7 +16,20 @@ create table capitulos (
 
 
 
+create or replace procedure fn_altaDeNovelas(ptitulo varchar, psinopsis text, pportada varchar)
+as
+$$
+declare 
+v_id integer;
+begin 
+	insert into novelas(titulo, sinopsis,portada) 
+	values (ptitulo,psinopsis,pportada);
+	returning id_novela into v_id;
 
+	return v_id;
+end;
+$$
+language plpgsql;
 
 
 

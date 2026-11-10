@@ -46,6 +46,9 @@
                 </div>
                 <a href="/index.php?action=edit&id=<?php echo $novela['id_novela']; ?>"
                     class="btn btn-outline-light">Editar Novela</a>
+                <!-- 2. Botón para EDITAR el capítulo -->
+                                <a href="index.php?action=crearCapitulo&id_novela=<?php echo $novela['id_novela']; ?>" class="btn btn-outline-light">+ Subir Nuevo Capítulo</a>
+
                 <hr class="border-secondary my-5">
 
                 <h3 class="text-white mb-4 text-start">Capítulos</h3>

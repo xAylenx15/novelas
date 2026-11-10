@@ -16,6 +16,9 @@ class CapitulosController
     // Muestra el formulario visual
     public function create()
     { 
+        // Atrapamos el ID de la novela que viene en el enlace
+        $id_novela = $_GET['id_novela'] ?? 0;
+        
         require __DIR__ . "/../view/subir.php";
     }
 

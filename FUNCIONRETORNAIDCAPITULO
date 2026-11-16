@@ -1,0 +1,34 @@
+
+create or replace function devolver_IDCapitulo(p_id_novela integer, p_numero integer)
+returns integer
+as 
+$$
+declare
+	v_aux integer;
+begin
+	if(p_id_novela is NULL) then 
+		raise exception 'El ID NOVELA no puede ser NULL';
+	end if;
+	if (p_numero is null) then 
+		raise exception 'El capitulo no puede ser NULL';
+	end if;
+	if (p_numero < 0) then 	
+		raise exception 'No puede ser un numero negativo el capitulo';
+	end if;
+	if (not exists (select 1 
+					from novelas 
+					where id_novela = p_id_novela)) then
+		raise exception 'La novela indicada no existe';
+    end if;
+	select capitulo_id
+	into v_aux
+	from capitulos 
+	where id_novela = p_id_novela and 
+			numero = p_numero;
+	if not found then 
+		raise exception 'El capitulo no existe';
+	end if;
+	return v_aux;
+end;
+$$
+language plpgsql;

@@ -268,4 +268,49 @@ $$ LANGUAGE plpgsql;
 
 
 
+--NUEVA TABLA GENEROS
+CREATE TABLE generos (
+    id_genero SERIAL PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL UNIQUE
+);
+
+INSERT INTO generos (nombre)
+VALUES
+('Romance'),
+('Fantasía'),
+('Ciencia ficción'),
+('Misterio'),
+('Suspenso'),
+('Terror'),
+('Drama'),
+('Aventura'),
+('Acción')
+('Comedia'),
+('Historico'),
+('Policial')
+('Psicológico')
+('Juvenil'),
+('Slice of Life'),
+('Apocalíptico'),
+('Distopía'),
+('Mitología'),
+('Erótico');
+
+ALTER TABLE novelas
+ADD COLUMN id_genero INT REFERENCES generos(id_genero),
+;
+
+--NUEVA TABLA ESTADOS
+CREATE TABLE estados (
+    id_estado SERIAL PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL UNIQUE
+);
+INSERT INTO estados (nombre)
+VALUES
+('En emision'),
+('Finalizado'),
+('Abandonado');
+ALTER TABLE novelas
+ADD COLUMN id_estado INT REFERENCES estados(id_estado);
+
 

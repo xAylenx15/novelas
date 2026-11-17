@@ -17,21 +17,54 @@ create table capitulos (
 
 
 
-create or replace function fn_altaDeNovelas(ptitulo varchar, psinopsis text, pportada varchar)
-returns integer
-as
-$$
-declare
-v_id integer;
-begin
-    insert into novelas(titulo, sinopsis,portada)
-    values (ptitulo,psinopsis,pportada)
+CREATE OR REPLACE FUNCTION fn_altaDeNovelas(
+    ptitulo varchar, 
+    psinopsis text, 
+    pportada varchar,
+    p_id_estado int, 
+    p_id_genero int, 
+    pautor varchar
+)
+RETURNS integer
+AS $$
+DECLARE
+    v_id integer;
+    v_autor varchar;
+BEGIN
+    -- Validaciones básicas
+    IF ptitulo IS NULL OR btrim(ptitulo) = '' THEN
+        RAISE EXCEPTION 'El título no puede estar vacío';
+    END IF;
+
+    IF pportada IS NULL OR btrim(pportada) = '' THEN
+        RAISE EXCEPTION 'La portada no puede estar vacía';
+    END IF;
+
+    IF pportada NOT LIKE 'http://%' AND pportada NOT LIKE 'https://%' THEN
+        RAISE EXCEPTION 'La portada debe ser una dirección válida (http:// o https://)';
+    END IF;
+
+    -- Validar que el ID del género exista en la tabla generos
+    IF NOT EXISTS (SELECT 1 FROM generos WHERE id_genero = p_id_genero) THEN
+        RAISE EXCEPTION 'El género seleccionado no existe en la base de datos';
+    END IF;
+
+    -- Validar que el ID del estado exista en la tabla estados
+    IF NOT EXISTS (SELECT 1 FROM estados WHERE id_estado = p_id_estado) THEN
+        RAISE EXCEPTION 'El estado seleccionado no existe en la base de datos';
+    END IF;
+
+    -- Autor por defecto
+    v_autor := COALESCE(NULLIF(btrim(pautor), ''), 'Desconocido');
+
+    -- Insertamos usando las nuevas columnas
+    INSERT INTO novelas (titulo, sinopsis, portada, id_estado, id_genero, autor)
+    VALUES (btrim(ptitulo), psinopsis, pportada, p_id_estado, p_id_genero, v_autor)
     RETURNING id_novela INTO v_id;
-    
-    return v_id;
-end;
-$$
-language plpgsql;
+
+    RETURN v_id;
+END;
+$$ LANGUAGE plpgsql;
 
 
 

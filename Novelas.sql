@@ -46,19 +46,22 @@ FOREIGN KEY (id_novela)
 REFERENCES novelas(id_novela)
 ON DELETE CASCADE;
 
---FUNCION INDIVIDUAL BAJA
-CREATE OR REPLACE FUNCTION fn_baja_novela(p_id_novela int)
-RETURNS text
+--FUNCION BAJA NOVELA
+CREATE OR REPLACE FUNCTION fn_baja_novela(p_id_novela INT)
+RETURNS VOID
 AS
 $$
 BEGIN
-
-    IF NOT EXISTS (SELECT 1 FROM novelas WHERE id_novela = p_id_novela) THEN
-        RETURN 'La novela no existe';
+    -- Verificar que la novela exista
+    IF NOT EXISTS (SELECT id_novela FROM novelas WHERE id_novela = p_id_novela) THEN
+        RAISE EXCEPTION 'La novela no existe';
     END IF;
+
+    -- Eliminar la novela y sus capítulos
     DELETE FROM novelas
     WHERE id_novela = p_id_novela;
-    RETURN 'Novela eliminada correctamente';
+
+    RAISE NOTICE 'Novela eliminada correctamente';
 
 END;
 $$

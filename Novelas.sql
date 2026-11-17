@@ -147,12 +147,11 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Función para Baja de Capítulo
-/*Entonces, dejamos estas reglas:
+/*Dejamos estas reglas:
 - La baja de un capítulo solamente elimina ese capítulo.
 - Se puede eliminar cualquier capítulo.
 - No se modifica la numeración de los demás.
-- No se guarda historial.
-- El estado de la novela se modifica mediante la función de modificación (UPDATE), cuando el usuario lo decida.*/
+- No se guarda historial.*/
 
 CREATE OR REPLACE FUNCTION fn_bajaCapitulo(p_capitulo_id INT)
 RETURNS VOID

@@ -366,3 +366,30 @@ ALTER TABLE novelas
 ADD COLUMN id_estado INT REFERENCES estados(id_estado);
 
 
+--FUNCION DEVOLVER idnovela
+--Esta función supone que la combinación título + autor identifica una sola novela
+CREATE OR REPLACE FUNCTION devolver_idnovela(p_titulo VARCHAR,p_autor VARCHAR)
+RETURNS INTEGER
+AS
+$$
+DECLARE
+    l_aux INTEGER;
+BEGIN
+    IF p_titulo IS NULL OR TRIM(p_titulo) = '' THEN
+        RAISE EXCEPTION 'El título de la novela no puede estar vacío';
+    END IF;
+    IF p_autor IS NULL OR TRIM(p_autor) = '' THEN
+        RAISE EXCEPTION 'El autor no puede estar vacío';
+    END IF;
+    SELECT id_novela INTO l_aux FROM novelas
+    WHERE LOWER(TRIM(titulo)) = LOWER(TRIM(p_titulo)) AND LOWER(TRIM(autor)) = LOWER(TRIM(p_autor));
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No existe una novela con ese título y autor';
+    END IF;
+
+    RETURN l_aux;
+END;
+$$
+LANGUAGE plpgsql;
+
+

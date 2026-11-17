@@ -1,0 +1,270 @@
+
+
+-- 		CREAMOS TABLAS 
+
+-- CREAMOS LA TABLA DE NOVELAS
+create table novelas(
+	id_novela serial primary key,
+	titulo varchar(255) not null,
+	sinopsis text,
+	portada varchar(255) not null,
+	genero int references genero(id_genero),
+	estado int references estado(id_estado)
+);
+
+-- CREAMOS LA TABLA CAPITULOS 
+create table capitulos(
+	id_capitulo serial primary key,
+	id_novela int references novelas(id_novela),
+	nombre varchar(255),
+	numero int not null,
+	texto text not null
+);
+
+-- MODIFICACION DE LA TABLA CAPITULOS
+ALTER TABLE capitulos
+ADD CONSTRAINT uq_capitulos_novela_numero
+UNIQUE (id_novela, numero);
+-- No permitira internamente que una novela tenga
+-- como numero de capitulo el mismo que otro
+
+-- CREAMOS LA TABLA GENERO 
+create table genero(
+	id_genero serial primary key,
+	nombre varchar(50) not null unique
+);
+
+-- CREAMOS LA TABLA ESTADO 
+create table estado(
+	id_estado serial primary key,
+	nombre varchar(50) not null unique
+);
+
+-- 		INSERCION 
+
+-- CARGAMOS LA TABLA ESTADO 
+insert into estado(nombre)
+values 
+		('En emision'),
+		('Finalizado'),
+		('Abandonado');
+
+-- CARGAMOS LA TABALA GENERO 
+insert into genero(nombre)
+values
+		('Romance'),
+		('Fantasia'),
+		('Ciencia Ficcion'),
+		('Misterio'),
+		('Suspenso'),
+		('Terror'),
+		('Drama'),
+		('Aventura'),
+		('Accion'),
+		('Comedia'),
+		('Historico'),
+		('Policial'),
+		('Psicologico'),
+		('Juvenil'),
+		('Slice of Life'),
+		('Apocaliptico'),
+		('Distopia'),
+		('Mitologia'),
+		('Erotico');
+
+--		FUNCIONES
+
+-- Funcion para retornar el id_capitulo
+create or replace function devolver_IDCapitulo(p_id_novela integer, p_numero integer)
+returns integer
+as 
+$$
+declare
+	v_aux integer;
+begin
+	if(p_id_novela is NULL) then 
+		raise exception 'El ID NOVELA no puede ser NULL';
+	end if;
+	if (p_numero is null) then 
+		raise exception 'El capitulo no puede ser NULL';
+	end if;
+	if (p_numero < 0) then 	
+		raise exception 'No puede ser un numero negativo el capitulo';
+	end if;
+	if (not exists (select 1 
+					from novelas 
+					where id_novela = p_id_novela)) then
+		raise exception 'La novela indicada no existe';
+    end if;
+	select id_capitulo
+	into v_aux
+	from capitulos 
+	where id_novela = p_id_novela and 
+			numero = p_numero;
+	if not found then 
+		raise exception 'El capitulo no existe';
+	end if;
+	return v_aux;
+end;
+$$
+language plpgsql;
+
+-- Funcion para modificar capitulo 
+CREATE OR REPLACE FUNCTION modificar_capitulo(
+    p_id_capitulo INT,
+    p_id_novela INT,
+    p_datos_a_modificar JSONB
+)
+RETURNS capitulos
+AS 
+$$
+DECLARE
+    var_aux capitulos;
+    var_textual TEXT;
+    var_aux_ent int;
+	var_aux_numeric numeric;
+    var_hubo_cambios BOOLEAN := false;
+    var_cantidad_claves INT;
+BEGIN
+    -- 1. VERIFICAR QUE EL CAPITULO PERTENEZCA A LA NOVELA
+    SELECT *
+    INTO var_aux
+    FROM capitulos
+    WHERE id_capitulo = p_id_capitulo
+      AND id_novela = p_id_novela;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el capítulo indicado o no pertenece a la novela especificada';
+    END IF;
+
+    -- 2. CONTROLES GENERALES DEL JSONB
+    IF p_datos_a_modificar IS NULL THEN
+        RAISE EXCEPTION 'Los datos a modificar no pueden ser NULL';
+    END IF;
+    IF jsonb_typeof(p_datos_a_modificar) IS DISTINCT FROM 'object' THEN
+        RAISE EXCEPTION 'Los datos deben tener formato de objeto JSON';
+    END IF;
+    SELECT COUNT(*)
+    INTO var_cantidad_claves
+    FROM jsonb_object_keys(p_datos_a_modificar);
+    IF var_cantidad_claves = 0 THEN
+        RAISE EXCEPTION 'No se proporcionaron atributos para modificar';
+    END IF;
+    IF var_cantidad_claves > 3 THEN
+        RAISE EXCEPTION 'Se superó la cantidad de atributos permitidos';
+    END IF;
+    IF EXISTS (
+        SELECT 1
+        FROM jsonb_object_keys(p_datos_a_modificar) AS claves(clave)
+        WHERE clave NOT IN ('nombre', 'numero', 'texto')
+    ) THEN
+        RAISE EXCEPTION 'Se proporcionaron atributos no permitidos';
+    END IF;
+
+    -- 3. MODIFICAR NOMBRE
+    IF p_datos_a_modificar ? 'nombre' THEN
+        IF jsonb_typeof(p_datos_a_modificar->'nombre') IS DISTINCT FROM 'string'
+           AND jsonb_typeof(p_datos_a_modificar->'nombre') IS DISTINCT FROM 'null' THEN
+            RAISE EXCEPTION 'El valor pasado no corresponde a un nombre de capítulo';
+        END IF;
+        var_textual := p_datos_a_modificar->>'nombre';
+        IF btrim(var_textual) = '' THEN
+            var_textual := NULL;
+        END IF;
+        IF var_textual IS DISTINCT FROM var_aux.nombre THEN
+            var_aux.nombre := var_textual;
+            var_hubo_cambios := true;
+        END IF;
+    END IF;
+
+    -- 4. MODIFICAR NUMERO
+    IF p_datos_a_modificar ? 'numero' THEN
+        IF jsonb_typeof(p_datos_a_modificar->'numero') IS DISTINCT FROM 'number' THEN
+            RAISE EXCEPTION 'El valor pasado no corresponde a un número';
+        END IF;
+
+		var_aux_numeric := (p_datos_a_modificar->>'numero'):: numeric;
+		-- con el parentesis recuperamos en texto el valor asociado a la clave numero por lo
+		-- cual lo volveremos numerico con un casteo para preservar el valor pasado 
+		
+		if(var_aux_numeric>2147483647) then 
+			raise exception 'El valor pasado supera el limite permitido';
+		end if;
+		
+		if(var_aux_numeric<0)then
+			raise exception 'El valor pasado es un numero negativo';
+		end if;
+		
+		-- Ahora comprobaremos si son numeros enteros 
+		var_aux_ent := trunc(var_aux_numeric);
+
+		if (var_aux_ent != var_aux_numeric) then
+			raise exception 'El valor pasado no es un numero entero';
+		end if;
+
+		-- Deberiamos comprobar que el numero de capitulo que queremos poner no exista ya
+		if (exists(select 1
+					   from capitulos 
+					   where numero = var_aux_ent
+      						 AND id_novela = p_id_novela
+							 AND id_capitulo is distinct from p_id_capitulo)) then
+			raise exception 'El numero de capitulo que queremos colocar, ya existe';
+		end if;
+		/*Explicacion de esta parte de la funcion 
+			numero = var_aux_ent esto busca si el numero que queremos asignar ya esta utilizado
+			id_novela = p_id_novela limita la busqueda la novela correspondiente
+			id_capitulo is distinct form p_id_capitulo excluye al capitulo que estamos
+			Excluimos el capítulo que estamos modificando para evitar que se detecte
+			a sí mismo como duplicado cuando el usuario envía su mismo número actual.*/		
+
+        IF var_aux_ent IS DISTINCT FROM var_aux.numero THEN
+            var_aux.numero := var_aux_ent;
+            var_hubo_cambios := true;
+        END IF;
+
+    END IF;
+
+    -- 5. MODIFICAR TEXTO
+    IF p_datos_a_modificar ? 'texto' THEN
+        IF jsonb_typeof(p_datos_a_modificar->'texto') IS DISTINCT FROM 'string' THEN
+            RAISE EXCEPTION 'El valor pasado no corresponde al texto del capítulo';
+        END IF;
+        var_textual := p_datos_a_modificar->>'texto';
+        IF regexp_replace(var_textual, '\s', '', 'g') = '' THEN
+            RAISE EXCEPTION 'El texto del capítulo no puede estar vacío';
+        END IF;
+        IF var_textual IS DISTINCT FROM var_aux.texto THEN
+            var_aux.texto := var_textual;
+            var_hubo_cambios := true;
+        END IF;
+    END IF;
+
+    -- 6. VERIFICAR SI HUBO CAMBIOS
+    IF NOT var_hubo_cambios THEN
+        RAISE EXCEPTION 'No se realizaron modificaciones';
+    END IF;
+
+    -- 7. ACTUALIZAR CAPITULO
+    UPDATE capitulos
+    SET nombre = var_aux.nombre,
+        numero = var_aux.numero,
+        texto = var_aux.texto
+    WHERE id_novela = p_id_novela
+      AND id_capitulo = p_id_capitulo;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se puede actualizar el capítulo';
+    END IF;
+
+    -- 8. DEVOLVER CAPITULO MODIFICADO
+    RETURN var_aux;
+END;
+$$
+languge plpgsql;
+/*Llegamos a la conclusion que en la tabla capitulos agregamos 
+la condicon unique a id_novela,numero
+pues al poner unique garantizamos que la base de datos 
+nunca acepte numeros repetidos
+para una misma novela, incluso si alguien modifica
+los datos por fuera de la funcion o si ocurren 
+operaciones simultaneas
+*/

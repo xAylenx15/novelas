@@ -1,107 +1,128 @@
 <?php
 require_once __DIR__ . "/../configuration/conexion.php";
 require_once __DIR__ . "/../models/NovelasModels.php";
+require_once __DIR__ . "/../configuration/errores.php";
+
 class NovelasController
 {
-    private $novelModel; //atributo que se usa para moverse
+    private $novelModel;
 
     public function __construct()
-    { // un constructor para que vaya preparando el terreno
+    {
         global $conn;
         $this->novelModel = new Novela($conn);
     }
-    public function index() {
+
+    public function index()
+    {
         $novel = $this->novelModel->getAll();
-        require __DIR__ . "/../view/index.php"; // ESTA ES LA MAGIA
+        require __DIR__ . "/../view/index.php";
     }
+
     public function show()
     {
-        // 1. Atrapamos el ID
-        $id = (int) ($_GET["id"] ?? 0);
-        if ($id <= 0) {
-            header("Location: /index.php");
-            exit();
+        $id = $_GET["id"] ?? null;
+        try {
+            $novela = $this->novelModel->getById($id);
+        } catch (PDOException $e) {
+            die("<h2 style='color:red; text-align:center;'>" . htmlspecialchars(mensajeBD($e)) . "</h2>");
         }
 
-        // 2. Buscamos la novela
-        $novela = $this->novelModel->getById($id);
-        if (!$novela) {
-            die("<h2 style='color:red; text-align:center;'>Error: La novela no existe.</h2>");
-        }
-
-        // 3. Buscamos los capítulos de esta novela instanciando el modelo de capítulos
         require_once __DIR__ . "/../models/CapitulosModels.php";
         global $conn;
         $capituloModel = new Capitulo($conn);
-        
-        // Usamos la función getByNovelaId que habíamos creado antes
         $capitulos = $capituloModel->getByNovelaId($id);
 
-        // 4. Mandamos todo a la vista limpia
         require __DIR__ . "/../view/ver_novela.php";
     }
+
     public function create()
-    { //sirve para agregar el archivo donde cargado el formulario
-        require 'subir_novela.php';
+    {
+        // Pasamos las listas para los <select> también al formulario de Alta
+        $estados = $this->novelModel->getAllEstados();
+        $generos = $this->novelModel->getAllGeneros();
+        require __DIR__ . "/../view/subir_novela.php";
     }
 
-   public function store() {
-    
-    $titulo = trim($_POST['titulo'] ?? '');
-    $sinopsis = trim($_POST['sinopsis'] ?? '');
-    $portada = trim($_POST['portada'] ?? '');
-    $estado = trim($_POST['estado'] ?? '');
-    $genero = trim($_POST['genero'] ?? '');
-    $autor = trim($_POST['autor'] ?? '');
+    public function store()
+    {
+        // Atrapamos crudo, sin validaciones
+        $titulo = $_POST['titulo'] ?? null;
+        $sinopsis = $_POST['sinopsis'] ?? null;
+        $portada = $_POST['portada'] ?? null;
+        $estado = $_POST['estado'] ?? null;
+        $genero = $_POST['genero'] ?? null;
+        $autor = $_POST['autor'] ?? null;
 
-    if (empty($titulo) || empty($portada) || empty($genero)) {
-        header("Location: /index.php?action=create&error=vacios");
-        exit();
+        try {
+            // La base de datos decide si esto sirve o lanza excepción
+            $nuevo_id = $this->novelModel->create($titulo, $sinopsis, $portada, $estado, $genero, $autor);
+            header("Location: /index.php?action=showNovela&id=" . $nuevo_id);
+            exit();
+        } catch (PDOException $e) {
+            $error = mensajeBD($e);
+            $estados = $this->novelModel->getAllEstados();
+            $generos = $this->novelModel->getAllGeneros();
+            require __DIR__ . "/../view/subir_novela.php";
+        }
     }
 
-    // 3. Recién acá, sabiendo que los datos están perfectos, llamamos al Modelo
-    // (Aca llamarías a la función o procedimiento de tu base de datos)
-    $nuevo_id = $this->novelModel->create($titulo, $sinopsis, $portada, $estado,$genero,$autor);
-
-    header("Location: /index.php?action=showNovela&id=" . $nuevo_id);
-    exit();
-}
     public function edit()
-    { //se encarga de buscar el id y saber si esta dicho id
-        $id = (int) ($_GET["id"] ?? 0);
-        if ($id <= 0) {
-            die("ID invalido");
+    {
+        $id = $_GET["id"] ?? null;
+
+        try {
+            $novel = $this->novelModel->getById($id);
+        } catch (PDOException $e) {
+            die("<h2 style='color:red; text-align:center;'>" . htmlspecialchars(mensajeBD($e)) . "</h2>");
         }
-        $novel = $this->novelModel->getById($id);
-        if (!$novel) {
-            die("Novela no encontrada");
-        }
+
+        $estados = $this->novelModel->getAllEstados();
+        $generos = $this->novelModel->getAllGeneros();
+
         require __DIR__ . "/../view/edit.php";
     }
 
     public function update()
-    {  //se encarga de atrapar los datos del update y mandarlo a update en model, pa que actualice
-        $id = (int) ($_POST["novela_id"] ?? 0);
-        $titulo = $_POST["titulo"];
-        $sinopsis = $_POST["sinopsis"];
-        $portada = $_POST["portada"];
-        if ($id <= 0 || $titulo === "" || $portada === "") {
-            die("Datos inválidos.");
+    {
+        // Atrapamos crudo
+        $id = $_POST["novela_id"] ?? null;
+        $titulo = $_POST["titulo"] ?? null;
+        $sinopsis = $_POST["sinopsis"] ?? null;
+        $portada = $_POST["portada"] ?? null;
+        $estado = $_POST["estado"] ?? null;
+        $genero = $_POST["genero"] ?? null;
+        $autor = $_POST["autor"] ?? null;
+
+        try {
+            $this->novelModel->update($id, $titulo, $sinopsis, $portada, $estado, $genero, $autor);
+            header("Location: index.php?action=showNovela&id=" . $id);
+            exit();
+        } catch (PDOException $e) {
+            $error = mensajeBD($e);
+            try {
+                $novel = $this->novelModel->getById($id);
+            } catch (PDOException $e2) {
+                die("<h2 style='color:red; text-align:center;'>" . htmlspecialchars(mensajeBD($e2)) . "</h2>");
+            }
+            $estados = $this->novelModel->getAllEstados();
+            $generos = $this->novelModel->getAllGeneros();
+            require __DIR__ . "/../view/edit.php";
         }
-        $this->novelModel->update($id, $titulo, $sinopsis, $portada);
-        header("Location: index.php?action=index");
-        exit();
+
     }
 
     public function delete()
     {
-        $id = (int) ($_POST["novela_id"] ?? 0);
-        if ($id > 0) {
+        $id = $_POST["novela_id"] ?? null;
+        try {
             $this->novelModel->delete($id);
             header("Location: index.php?action=index");
             exit;
+        } catch (PDOException $e) {
+            $error = mensajeBD($e);
+            die("<h2 style='color:red;'>Error de Base de Datos al eliminar: " . htmlspecialchars($error) . "</h2>");
         }
     }
-
 }
 ?>

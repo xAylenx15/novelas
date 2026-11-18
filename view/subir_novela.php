@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>Subir Novela</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,44 +13,62 @@
             <div class="col-md-6">
                 <div class="card bg-dark text-white p-4 border-secondary">
 
+                    <!-- ACÁ SE MUESTRA EL ERROR QUE MANDA POSTGRESQL -->
+                    <?php if (!empty($error)): ?>
+                        <div class="alert alert-danger" role="alert">
+                            <strong>Atención:</strong> <?php echo htmlspecialchars($error); ?>
+                        </div>
+                    <?php endif; ?>
+
                     <form id="formNovela" action="/index.php?action=store" method="POST">
                         <a class="btn btn-outline-light mb-3" href="../../index.php">← Volver</a>
+                        
+                        <!-- NOTA: Sin los 'required' -->
                         <div class="mb-3">
-                            <label class="form-label text-white">Titulo</label>
-                            <input type="text" name="titulo" class="form-control bg-secondary text-white border-0"
-                                required>
+                            <label class="form-label text-white">Título</label>
+                            <input type="text" name="titulo" class="form-control bg-secondary text-white border-0">
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label text-white">Enlace de la portada</label>
                             <input type="text" id="urlPortada" name="portada"
-                                class="form-control bg-secondary text-white border-0" required>
-                            <div id="errorPortada" class="text-danger mt-1" style="display: none; font-size: 0.85em;">
-                                ¡Error! La URL de la portada debe empezar con http:// o https://
-                            </div>
+                                class="form-control bg-secondary text-white border-0">
                         </div>
                        
-                       <div class="mb-3"> 
-                         <label class="form-label text-white">Estado </label>
-                             <select name="estado" class="form-control">
-                            <option value="en emision">En emisión</option>
-                            <option value="finalizado">Finalizado</option>
-                            <option value="abandonado">Abandonado</option>
-                        </select>
-                       </div>
+                        <div class="mb-3"> 
+                            <label class="form-label text-white">Estado</label>
+                            <select name="estado" class="form-control bg-secondary text-white border-0">
+                                <option value="">Seleccione un estado...</option>
+                                <?php foreach ($estados as $est): ?>
+                                    <option value="<?php echo $est['id_estado']; ?>">
+                                        <?php echo htmlspecialchars($est['nombre']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
                         <div class="mb-3">
-                            <label class="form-label text-white">Genero</label>
-                            <input name="genero" class="form-control bg-secondary text-white border-0" required>
+                            <label class="form-label text-white">Género</label>
+                            <select name="genero" class="form-control bg-secondary text-white border-0">
+                                <option value="">Seleccione un género...</option>
+                                <?php foreach ($generos as $gen): ?>
+                                    <option value="<?php echo $gen['id_genero']; ?>">
+                                        <?php echo htmlspecialchars($gen['nombre']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
-                         <div class="mb-3">
+
+                        <div class="mb-3">
                             <label class="form-label text-white">Autor</label>
-                            <input name="autor" class="form-control bg-secondary text-white border-0"
-                                required>
+                            <input type="text" name="autor" class="form-control bg-secondary text-white border-0">
                         </div>
-                         <div class="mb-3">
-                            <label class="form-label text-white">Sipnosis</label>
-                            <textarea name="sinopsis" class="form-control bg-secondary text-white border-0" rows="4"
-                                required></textarea>
+
+                        <div class="mb-3">
+                            <label class="form-label text-white">Sinopsis</label>
+                            <textarea name="sinopsis" class="form-control bg-secondary text-white border-0" rows="4"></textarea>
                         </div>
+
                         <button type="submit" class="btn btn-primary px-4">Subir Novela</button>
                     </form>
 
@@ -60,7 +77,5 @@
         </div>
     </div>
 
-    <script src="/validaciones.js"></script>
 </body>
-
 </html>

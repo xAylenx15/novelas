@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Editar: <?php echo $capitulo['nombre']; ?></title>
+    <title>Editar: <?php echo htmlspecialchars($capitulo['nombre']); ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
@@ -14,36 +14,42 @@
             <div class="col-md-6">
                 <div class="card bg-dark text-white p-4 border-secondary">
 
-                    <!-- Botón volver apuntando al router -->
-                    <!-- Cambiamos showCapitulo por showNovela y capitulo_id por id_novela -->
                     <a class="btn btn-outline-light mb-3"
                         href="index.php?action=showNovela&id=<?php echo $capitulo['id_novela']; ?>" role="button">←
                         Volver</a>
 
                     <h3 class="mb-4 text-center">Gestión de Capítulo</h3>
 
-                    <!-- OJO ACÁ: action=updateCapitulo -->
+                    <!-- NUEVO: Cartel para mostrar los errores que ataja PostgreSQL -->
+                    <?php if (!empty($error)): ?>
+                        <div class="alert alert-danger" role="alert">
+                            <strong>Atención:</strong> <?php echo htmlspecialchars($error); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- OJO ACÁ: Fijate que tu router en index.php mapee 'updateCapitulo' a la función update() -->
                     <form id="formCapitulo" action="index.php?action=updateCapitulo" method="POST">
                         <input type="hidden" name="capitulo_id" value="<?php echo $capitulo['capitulo_id']; ?>">
 
                         <div class="mb-3">
                             <label class="form-label text-white">Título del Capitulo</label>
+                            <!-- BORRAMOS EL required y agregamos htmlspecialchars -->
                             <input type="text" name="nombre" class="form-control bg-secondary text-white border-0"
-                                value="<?php echo $capitulo['nombre']; ?>" required>
+                                value="<?php echo htmlspecialchars($capitulo['nombre']); ?>">
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label text-white">Número</label>
-                            <!-- OJO ACÁ: type="number" -->
+                            <!-- BORRAMOS EL required y agregamos htmlspecialchars -->
                             <input type="number" id="num" name="numero"
                                 class="form-control bg-secondary text-white border-0"
-                                value="<?php echo $capitulo['numero']; ?>" required>
+                                value="<?php echo htmlspecialchars($capitulo['numero']); ?>">
                         </div>
 
                         <div class="mb-4">
                             <label class="form-label text-white">Contenido</label>
-                            <textarea name="texto" class="form-control bg-secondary text-white border-0" rows="10"
-                                required><?php echo $capitulo['texto']; ?></textarea>
+                            <!-- BORRAMOS EL required y agregamos htmlspecialchars -->
+                            <textarea name="texto" class="form-control bg-secondary text-white border-0" rows="10"><?php echo htmlspecialchars($capitulo['texto']); ?></textarea>
                         </div>
 
                         <div class="d-flex gap-3 mt-4">
@@ -52,7 +58,7 @@
                             </button>
                     </form>
 
-                    <!-- OJO ACÁ: action=deleteCapitulo -->
+                    <!-- OJO ACÁ: Fijate que tu router en index.php mapee 'deleteCapitulo' a la función delete() -->
                     <form action="index.php?action=deleteCapitulo" method="POST" class="m-0">
                         <input type="hidden" name="capitulo_id" value="<?php echo $capitulo['capitulo_id']; ?>">
                         <button type="submit" class="btn btn-danger px-4"
@@ -61,10 +67,10 @@
                         </button>
                     </form>
 
-                </div> <!-- Cierre del d-flex que envuelve los botones -->
+                    </div> <!-- Cierre del d-flex que envuelve los botones -->
+                </div>
             </div>
         </div>
-    </div>
     </div>
 </body>
 

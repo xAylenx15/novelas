@@ -3,7 +3,7 @@ $host = 'localhost';
 $port = '5432'; // Puerto clásico de PostgreSQL
 $dbname = 'Biblioteca'; // Reemplazá por el nombre exacto de tu BD
 $user = 'postgres'; // Usuario por defecto
-$password = '12345678Aylen.'; // La clave que usás para entrar a pgAdmin o DBeaver
+$password = 'ejemplodeContrasena'; // La clave que usás para entrar a pgAdmin o DBeaver
 
 try {
     // La magia ocurre acá: pasamos de 'mysql:' a 'pgsql:'

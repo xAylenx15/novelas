@@ -169,14 +169,14 @@ BEGIN
         RAISE EXCEPTION 'Se proporcionaron atributos no permitidos';
     END IF;
 
-    -- 3. MODIFICAR NOMBRE
+    -- 3. MODIFICAR NOMBRE: SI ES CADENA VACIA SE GUARDA COMO NULL
     IF p_datos_a_modificar ? 'nombre' THEN
         IF jsonb_typeof(p_datos_a_modificar->'nombre') IS DISTINCT FROM 'string'
            AND jsonb_typeof(p_datos_a_modificar->'nombre') IS DISTINCT FROM 'null' THEN
             RAISE EXCEPTION 'El valor pasado no corresponde a un nombre de capítulo';
         END IF;
-        var_textual := p_datos_a_modificar->>'nombre';
-        IF btrim(var_textual) = '' THEN
+        var_textual := btrim(p_datos_a_modificar->>'nombre');
+        IF (var_textual) = '' THEN
             var_textual := NULL;
         END IF;
         IF var_textual IS DISTINCT FROM var_aux.nombre THEN
@@ -196,20 +196,19 @@ BEGIN
 		-- cual lo volveremos numerico con un casteo para preservar el valor pasado 
 		
 		if(var_aux_numeric>2147483647) then 
-			raise exception 'El valor pasado supera el limite permitido';
+			raise exception 'El valor pasado para el capitulo supera el limite permitido';
 		end if;
 		
 		if(var_aux_numeric<0)then
-			raise exception 'El valor pasado es un numero negativo';
+			raise exception 'El valor pasado para el capitulo es un numero negativo';
 		end if;
-		
+
+		if (trunc(var_aux_numeric)!= var_aux_numeric) then
+			raise exception 'El valor pasado para el capitulo no es un numero entero';
+		end if;
+
 		-- Ahora comprobaremos si son numeros enteros 
-		var_aux_ent := trunc(var_aux_numeric);
-
-		if (var_aux_ent != var_aux_numeric) then
-			raise exception 'El valor pasado no es un numero entero';
-		end if;
-
+		var_aux_ent := trunc(var_aux_numeric)::int;
 		-- Deberiamos comprobar que el numero de capitulo que queremos poner no exista ya
 		if (exists(select 1
 					   from capitulos 
@@ -258,7 +257,8 @@ BEGIN
         numero = var_aux.numero,
         texto = var_aux.texto
     WHERE id_novela = p_id_novela
-      AND id_capitulo = p_id_capitulo;
+      AND id_capitulo = p_id_capitulo
+	RETURNING * INTO var_aux;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'No se puede actualizar el capítulo';
@@ -290,6 +290,7 @@ DECLARE
     var_textual TEXT;
     var_clave TEXT;
 	var_id int;
+	var_numeric numeric;
     v_hubo_cambios BOOLEAN := FALSE;
 BEGIN
     -- 1. Comprobar que los datos no sean SQL NULL
@@ -346,10 +347,10 @@ BEGIN
             RAISE EXCEPTION 'El nuevo valor para el título no es válido';
         END IF;
 
-        var_textual := p_Datos_A_Modificar ->> 'titulo';
+        var_textual := btrim(p_Datos_A_Modificar ->> 'titulo');
 
-        IF btrim(var_textual) = '' THEN
-            RAISE EXCEPTION 'No se puede ingresar una cadena vacía';
+        IF var_textual = '' THEN
+            RAISE EXCEPTION 'No se puede ingresar una cadena vacía para el titulo';
         END IF;
 		
         IF var_textual IS DISTINCT FROM var_aux.titulo THEN
@@ -368,8 +369,9 @@ BEGIN
             RAISE EXCEPTION 'El nuevo valor para la sinopsis no es válido';
         END IF;
 
-        var_textual := p_Datos_A_Modificar ->> 'sinopsis';
+        var_textual := btrim(p_Datos_A_Modificar ->> 'sinopsis');
 
+		-- la sinopsis puede retener una cadena vacia
         IF var_textual IS DISTINCT FROM var_aux.sinopsis THEN
             var_aux.sinopsis := var_textual;
             v_hubo_cambios := TRUE;
@@ -384,14 +386,14 @@ BEGIN
             RAISE EXCEPTION 'El nuevo valor para la portada no es válido';
         END IF;
 
-        var_textual := p_Datos_A_Modificar ->> 'portada';
+        var_textual := btrim(p_Datos_A_Modificar ->> 'portada');
 
-        IF btrim(var_textual) = '' THEN
-            RAISE EXCEPTION 'No se puede ingresar una cadena vacía';
+        IF (var_textual) = '' THEN
+            RAISE EXCEPTION 'No se puede ingresar una cadena vacía para la portada';
         END IF;
-
-        IF var_textual LIKE 'http://%'
-           OR var_textual LIKE 'https://%' THEN
+		-- rdta parte no garantiza que sea un url valido
+        IF lower(var_textual) LIKE 'http://%'
+           OR lower(var_textual) LIKE 'https://%' THEN
 
             IF var_textual IS DISTINCT FROM var_aux.portada THEN
                 var_aux.portada := var_textual;
@@ -399,7 +401,7 @@ BEGIN
             END IF;
 
         ELSE
-            RAISE EXCEPTION 'No es una dirección válida';
+            RAISE EXCEPTION 'No es una dirección válida para la portada';
         END IF;
     END IF;
 
@@ -413,11 +415,15 @@ BEGIN
             RAISE EXCEPTION 'El nuevo valor para el autor no es válido';
         END IF;
 
-        var_textual := p_Datos_A_Modificar ->> 'autor';
+        var_textual := btrim(p_Datos_A_Modificar ->> 'autor');
 
-        IF btrim(var_textual) = '' OR var_textual is NULL then 
+        IF (var_textual) = '' OR var_textual is NULL then 
 			var_textual:= 'Desconocido';
 		end if;
+
+		IF lower(var_textual) = 'desconocido' THEN
+    		var_textual := 'Desconocido';
+		END IF;
 
         IF var_textual IS DISTINCT FROM var_aux.autor THEN
             var_aux.autor := var_textual;
@@ -429,24 +435,27 @@ BEGIN
     IF p_Datos_A_Modificar ? 'genero' THEN
 
         IF jsonb_typeof(p_Datos_A_Modificar -> 'genero')
-           IS DISTINCT FROM 'string' THEN
+           IS DISTINCT FROM 'number' THEN
             RAISE EXCEPTION 'El nuevo valor para el género no es válido';
         END IF;
 
-        var_textual := p_Datos_A_Modificar ->> 'genero';
-
-        IF btrim(var_textual) = '' THEN
-            RAISE EXCEPTION 'El género no puede estar vacío';
-        END IF;
-
-        select id_genero into var_id
-		from genero
-		where nombre = var_textual;
-
-		if not found then 
-			raise exception 'El genero pasado no corresponde con ninguna de las opciones';
+		var_numeric:= (p_Datos_A_Modificar ->> 'genero')::numeric;
+		if var_numeric > 2147483647 then
+			raise exception 'El valor pasado para genero supera el limite de int';
 		end if;
-
+		if var_numeric <= 0 then 
+			raise exception 'El valo pasado para genero no puede ser negativo o cero';
+		end if;
+		if trunc(var_numeric)!= var_numeric then 
+			raise exception 'El valor pasado para genero no corresponde a un numero entero';
+		end if;
+        var_id := (var_numeric)::int;
+		IF NOT EXISTS (SELECT 1
+    				   FROM genero
+    				   WHERE id_genero = var_id
+		) THEN
+    		RAISE EXCEPTION 'El género indicado no existe';
+		END IF;
 		if var_id is distinct from var_aux.genero then
 			var_aux.genero := var_id;
 			v_hubo_cambios := true;
@@ -457,24 +466,27 @@ BEGIN
     IF p_Datos_A_Modificar ? 'estado' THEN
 
         IF jsonb_typeof(p_Datos_A_Modificar -> 'estado')
-           IS DISTINCT FROM 'string' THEN
+           IS DISTINCT FROM 'number' THEN
             RAISE EXCEPTION 'El nuevo valor para el estado no es válido';
         END IF;
 
-        var_textual := p_Datos_A_Modificar ->> 'estado';
-		
-		if (btrim(var_textual) = '') then
-			raise exception 'No puede ser una cadena vacia el estado';
+        var_numeric:= (p_Datos_A_Modificar ->> 'estado')::numeric;
+		if var_numeric > 2147483647 then
+			raise exception 'El valor pasado para estado supera el limite de int';
 		end if;
-
-        select id_estado into var_id
-		from estado
-		where nombre = var_textual;
-
-		if not found then 
-			raise exception 'El estado pasado no corresponde a ninguna de las opciones';
+		if var_numeric <= 0 then 
+			raise exception 'El valor pasado para estado no puede ser negativo o cero';
 		end if;
-		
+		if trunc(var_numeric)!= var_numeric then 
+			raise exception 'El valor pasado para estado no corresponde a un numero entero';
+		end if;
+        var_id := (var_numeric)::int;
+		IF NOT EXISTS (SELECT 1
+    				   FROM estado
+    				   WHERE id_estado = var_id
+		) THEN
+    		RAISE EXCEPTION 'El estado indicado no existe';
+		END IF;
 		if var_id is distinct from var_aux.estado then
 			var_aux.estado := var_id;
 			v_hubo_cambios := true;

@@ -87,7 +87,7 @@ $$
 BEGIN
     -- Verificar que la novela exista
     IF NOT EXISTS (SELECT id_novela FROM novelas WHERE id_novela = p_id_novela) THEN
-        RAISE EXCEPTION 'La novela no existe';
+        RAISE EXCEPTION 'La novela no existe en la base de datos';
     END IF;
 
     -- Eliminar la novela y sus capítulos
@@ -125,7 +125,7 @@ $$
 BEGIN
     -- Verificar que el capítulo exista
     IF NOT EXISTS (SELECT 1 FROM capitulos WHERE capitulo_id = p_capitulo_id) THEN
-        RAISE EXCEPTION 'El capítulo no existe';
+        RAISE EXCEPTION 'El capítulo no existe en la base de datos';
     END IF;
     -- Eliminar el capítulo
     DELETE FROM capitulos

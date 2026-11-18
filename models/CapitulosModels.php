@@ -61,17 +61,25 @@ class Capitulo {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function updateCapitulo($id, $nombre, $numero, $texto) {
-        // La actualización siempre usa la función fuerte, esto no cambia
-        $sql = "SELECT fn_modificarCapitulo(:id, :nombre, :numero, :texto)";
-        $stmt = $this->conn->prepare($sql);
-        
-        return $stmt->execute([
-            ':id'     => $id,
-            ':nombre' => $nombre,
-            ':numero' => $numero,
-            ':texto'  => $texto
-        ]);
-    }
+       public function updateCapitulo($id, $id_novela, $nombre, $numero, $texto) {
+    // PHP empaqueta todo tal cual llega y se lo tira a la base de datos
+    $datos = [
+        'nombre' => $nombre,
+        'numero' => $numero,
+        'texto'  => $texto
+    ];
+
+    $sql = "SELECT * FROM modificar_capitulo(:id, :id_novela, CAST(:datos_json AS jsonb))";
+    $stmt = $this->conn->prepare($sql);
+
+    $stmt->execute([
+        ':id'         => $id,
+        ':id_novela'  => $id_novela,
+        ':datos_json' => json_encode($datos)
+    ]);
+
+    // Retornamos el registro que devuelve PostgreSQL
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
 } 
 ?>

@@ -9,62 +9,68 @@ class Capitulo {
     }
 
     public function getByNovelaId($novela_id){
-        $stmt = $this->conn->prepare("SELECT * FROM capitulos WHERE id_novela = :id_novela ORDER BY numero ASC");
+        // Leemos de la vista en lugar de la tabla cruda
+        $stmt = $this->conn->prepare("SELECT * FROM vw_capitulos_completos WHERE id_novela = :id_novela ORDER BY numero ASC");
         $stmt->execute([':id_novela' => $novela_id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getCapituloById($id){
-        $stmt = $this->conn->prepare("SELECT * FROM capitulos WHERE capitulo_id = :id");
+        // Leemos de la vista
+        $stmt = $this->conn->prepare("SELECT * FROM fn_get_capitulo(:id)");
         $stmt->execute([':id' => $id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     public function create($novela_id, $nombre, $numero, $texto){
-        // Llamamos a la función de Postgre con los parámetros correctos
-        $sql = "SELECT fn_altaCapitulo(:id_novela, :nombre, :numero, :texto)";
+        // Atrapamos el ID generado
+        $sql = "SELECT fn_altaCapitulo(:id_novela, :nombre, :numero, :texto) AS nuevo_id";
         $stmt = $this->conn->prepare($sql);
-        return $stmt->execute([
+        $stmt->execute([
             ':id_novela' => $novela_id,
             ':nombre' => $nombre,
             ':numero' => $numero,
             ':texto' => $texto
         ]);
+        
+        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $resultado['nuevo_id'];
     }
 
     public function deleteCapitulo($id){
-        $sql = "SELECT fn_bajaCapitulo(:id)";
+        // Atrapamos el mensaje de éxito de la base de datos
+        $sql = "SELECT fn_bajaCapitulo(:id) AS mensaje";
         $stmt = $this->conn->prepare($sql);
-        return $stmt->execute([':id' => $id]);
+        $stmt->execute([':id' => $id]);
+        
+        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $resultado['mensaje'];
     }
     
     public function getPrevChapter($novela_id, $numero_actual){
-        $stmt = $this->conn->prepare("SELECT capitulo_id FROM capitulos WHERE id_novela = :id_novela AND numero < :numero ORDER BY numero DESC LIMIT 1");
+        // Leemos de la vista
+        $stmt = $this->conn->prepare("SELECT capitulo_id FROM vw_capitulos_completos WHERE id_novela = :id_novela AND numero < :numero ORDER BY numero DESC LIMIT 1");
         $stmt->execute([':id_novela' => $novela_id, ':numero' => $numero_actual]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     public function getNextChapter($novela_id, $numero_actual){
-        $stmt = $this->conn->prepare("SELECT capitulo_id FROM capitulos WHERE id_novela = :id_novela AND numero > :numero ORDER BY numero ASC LIMIT 1");
+        // Leemos de la vista
+        $stmt = $this->conn->prepare("SELECT capitulo_id FROM vw_capitulos_completos WHERE id_novela = :id_novela AND numero > :numero ORDER BY numero ASC LIMIT 1");
         $stmt->execute([':id_novela' => $novela_id, ':numero' => $numero_actual]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
     public function updateCapitulo($id, $nombre, $numero, $texto) {
-        // Armamos la consulta SQL clásica para actualizar
-        $sql = "UPDATE capitulos 
-                SET nombre = :nombre, 
-                    numero = :numero, 
-                    texto = :texto 
-                WHERE capitulo_id = :id";
-                
+        // La actualización siempre usa la función fuerte, esto no cambia
+        $sql = "SELECT fn_modificarCapitulo(:id, :nombre, :numero, :texto)";
         $stmt = $this->conn->prepare($sql);
         
-        // Ejecutamos pasando los parámetros para evitar inyecciones SQL
         return $stmt->execute([
+            ':id'     => $id,
             ':nombre' => $nombre,
             ':numero' => $numero,
-            ':texto'  => $texto,
-            ':id'     => $id
+            ':texto'  => $texto
         ]);
     }
 } 

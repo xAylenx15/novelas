@@ -1,0 +1,55 @@
+body{
+    background-color: black;
+
+}
+h1,p{
+    color:white;
+
+}
+.card-body{
+    align-items: center;
+}
+.jumbotron{
+    align-items: center;
+    text-align: center;
+    padding-top: 20px;
+    padding-bottom: 5%;
+}
+
+.card-novela {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-novela:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.7) !important;
+}
+.portada-novela {
+    height: 280px; 
+    width: 100%;
+    object-fit: cover;
+    border-top-left-radius: var(--bs-card-inner-border-radius);
+    border-top-right-radius: var(--bs-card-inner-border-radius);
+}
+
+/* Permite hasta 2 renglones de título ordenados sin romper la simetría de la tarjeta */
+.titulo-novela {
+    display: -webkit-box;
+    -webkit-line-clamp: 2; 
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 48px; /* Mantiene la altura pareja aunque el título sea de 1 sola palabra */
+    white-space: normal;
+}
+
+/* Botón personalizado color beige */
+.btn-beige {
+    background-color: #F5F5DC; /* Color beige clásico */
+    color: #121212; /* Texto oscuro para buen contraste */
+    border: none;
+    transition: background-color 0.2s ease;
+}
+
+.btn-beige:hover {
+    background-color: #E6E6C8; /* Un beige penitas más oscuro al pasar el cursor */
+    color: #000;
+}

@@ -14,7 +14,6 @@
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             border-radius: 12px;
             overflow: hidden;
-            /* Mantiene la imagen adentro de los bordes redondeados */
         }
 
         .card-novela:hover {
@@ -33,11 +32,27 @@
 
         /* Estilo del Header principal */
         .biblioteca-header {
+            position: relative;
             background: linear-gradient(to right, #111, #222);
             border-bottom: 1px solid #444;
             border-radius: 0 0 20px 20px;
-            padding: 3rem 1rem;
+            padding: 3.5rem 1rem 3rem;
             margin-bottom: 3rem;
+        }
+
+        /* Lupa sola arriba a la derecha */
+        .icono-lupa {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            color: #adb5bd;
+            text-decoration: none;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+
+        .icono-lupa:hover {
+            color: #ffffff;
+            transform: scale(1.15);
         }
     </style>
 </head>
@@ -45,12 +60,21 @@
 <body style="background-color: #121212; color: #fff;">
     <div class="container pb-5">
 
-        <!-- Cabecera de la página mejorada -->
+        <!-- Cabecera de la página -->
         <div class="biblioteca-header text-center shadow-lg">
+
+            <!-- Lupa sola arriba a la derecha -->
+            <a href="index.php?action=consulta" class="icono-lupa"
+               title="Consultar novelas" aria-label="Consultar novelas">
+                <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+                </svg>
+            </a>
+
             <h1 class="display-5 fw-bold mb-2">Mi biblioteca de traducciones</h1>
+
             <p class="lead text-secondary mb-4">Listado de novelas traducidas</p>
 
-            <!-- Ruta corregida hacia el controlador -->
             <a href="index.php?action=create" class="btn btn-outline-light btn-lg px-4 rounded-pill fw-bold">
                 + Subir Nueva Novela
             </a>
@@ -60,24 +84,18 @@
         <div class="row g-4">
             <?php foreach ($novel as $row): ?>
 
-                <!-- Clases responsivas: 1 columna en móvil, 2 en tablet, 3-4 en PC -->
                 <div class="col-12 col-sm-6 col-md-4 col-lg-3">
 
-                    <!-- Tarjeta con la clase card-novela para el hover -->
                     <div class="card bg-dark text-white border-secondary h-100 d-flex flex-column card-novela">
 
-                        <!-- Imagen borde a borde -->
                         <img src="<?php echo htmlspecialchars($row['portada']); ?>" class="portada-novela"
                             alt="Portada de <?php echo htmlspecialchars($row['titulo']); ?>">
 
-                        <!-- Cuerpo con el texto y el botón -->
                         <div class="card-body d-flex flex-column p-3">
-                            <!-- Reemplazamos 'text-truncate' por 'titulo-novela' -->
                             <h5 class="card-title fw-bold titulo-novela"
                                 title="<?php echo htmlspecialchars($row['titulo']); ?>">
                                 <?php echo htmlspecialchars($row['titulo']); ?>
                             </h5>
-
 
                             <p class="card-text text-secondary small mb-4">
                                 <?php
@@ -86,7 +104,6 @@
                                 ?>
                             </p>
 
-                            <!-- Cambiamos 'btn-primary' por nuestra clase 'btn-beige' -->
                             <a href="/index.php?action=showNovela&id=<?php echo $row['id_novela']; ?>"
                                 class="btn btn-beige w-100 mt-auto fw-semibold">Ver novela</a>
                         </div>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Subir Novela</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,7 +14,6 @@
             <div class="col-md-6">
                 <div class="card bg-dark text-white p-4 border-secondary">
 
-                    <!-- ACÁ SE MUESTRA EL ERROR QUE MANDA POSTGRESQL -->
                     <?php if (!empty($error)): ?>
                         <div class="alert alert-danger" role="alert">
                             <strong>Atención:</strong> <?php echo htmlspecialchars($error); ?>
@@ -22,25 +22,26 @@
 
                     <form id="formNovela" action="/index.php?action=store" method="POST">
                         <a class="btn btn-outline-light mb-3" href="../../index.php">← Volver</a>
-                        
-                        <!-- NOTA: Sin los 'required' -->
+
                         <div class="mb-3">
                             <label class="form-label text-white">Título</label>
-                            <input type="text" name="titulo" class="form-control bg-secondary text-white border-0">
+                            <input type="text" name="titulo" class="form-control bg-secondary text-white border-0"
+                                value="<?php echo htmlspecialchars($titulo ?? ''); ?>">
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label text-white">Enlace de la portada</label>
                             <input type="text" id="urlPortada" name="portada"
-                                class="form-control bg-secondary text-white border-0">
+                                class="form-control bg-secondary text-white border-0"
+                                value="<?php echo htmlspecialchars($portada ?? ''); ?>">
                         </div>
-                       
-                        <div class="mb-3"> 
+
+                        <div class="mb-3">
                             <label class="form-label text-white">Estado</label>
                             <select name="estado" class="form-control bg-secondary text-white border-0">
                                 <option value="">Seleccione un estado...</option>
                                 <?php foreach ($estados as $est): ?>
-                                    <option value="<?php echo $est['id_estado']; ?>">
+                                    <option value="<?php echo $est['id_estado']; ?>" <?php echo (($estado ?? '') == $est['id_estado']) ? 'selected' : ''; ?>>
                                         <?php echo htmlspecialchars($est['nombre']); ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -52,7 +53,7 @@
                             <select name="genero" class="form-control bg-secondary text-white border-0">
                                 <option value="">Seleccione un género...</option>
                                 <?php foreach ($generos as $gen): ?>
-                                    <option value="<?php echo $gen['id_genero']; ?>">
+                                    <option value="<?php echo $gen['id_genero']; ?>" <?php echo (($genero ?? '') == $gen['id_genero']) ? 'selected' : ''; ?>>
                                         <?php echo htmlspecialchars($gen['nombre']); ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -61,12 +62,14 @@
 
                         <div class="mb-3">
                             <label class="form-label text-white">Autor</label>
-                            <input type="text" name="autor" class="form-control bg-secondary text-white border-0">
+                            <input type="text" name="autor" class="form-control bg-secondary text-white border-0"
+                                value="<?php echo htmlspecialchars($autor ?? ''); ?>">
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label text-white">Sinopsis</label>
-                            <textarea name="sinopsis" class="form-control bg-secondary text-white border-0" rows="4"></textarea>
+                            <textarea name="sinopsis" class="form-control bg-secondary text-white border-0"
+                                rows="4"><?php echo htmlspecialchars($sinopsis ?? ''); ?></textarea>
                         </div>
 
                         <button type="submit" class="btn btn-primary px-4">Subir Novela</button>
@@ -78,4 +81,5 @@
     </div>
 
 </body>
+
 </html>

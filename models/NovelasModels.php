@@ -52,15 +52,15 @@ class Novela
 
     }
 
-    public function update($id, $titulo, $sinopsis, $portada, $id_estado, $id_genero, $autor)
+    public function update($id, $titulo, $sinopsis, $portada, $estado, $genero, $autor)
     {
         // Le agregamos (int) solo para que json_encode los trate como números
         $datos = [
             'titulo' => $titulo,
             'sinopsis' => $sinopsis,
             'portada' => $portada,
-            'id_estado' => (int) $id_estado,
-            'id_genero' => (int) $id_genero,
+            'estado' => (int) $estado,
+            'genero' => (int) $genero,
             'autor' => $autor
         ];
 
@@ -84,5 +84,32 @@ class Novela
         $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
         return $resultado['mensaje_resultado'];
     }
+
+    public function buscarNovelas($titulo = '', $autor = '', $id_genero = '', $id_estado = '') {
+    $sql = "SELECT * FROM vw_novelas_completas
+            WHERE titulo ILIKE '%' || :titulo || '%'
+              AND autor  ILIKE '%' || :autor  || '%'";
+
+    $params = [
+        ':titulo' => $titulo,
+        ':autor'  => $autor
+    ];
+
+    if ($id_genero !== '') {
+        $sql .= " AND id_genero = :id_genero";
+        $params[':id_genero'] = (int)$id_genero;
+    }
+
+    if ($id_estado !== '') {
+        $sql .= " AND id_estado = :id_estado";
+        $params[':id_estado'] = (int)$id_estado;
+    }
+
+    $sql .= " ORDER BY titulo ASC";
+
+    $stmt = $this->conn->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 }
 ?>

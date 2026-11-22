@@ -66,6 +66,19 @@ class NovelasController
             require __DIR__ . "/../view/subir_novela.php";
         }
     }
+    public function consulta()
+{
+    $titulo    = $_GET['titulo'] ?? '';
+    $autor     = $_GET['autor'] ?? '';
+    $id_genero = $_GET['genero'] ?? '';
+    $id_estado = $_GET['estado'] ?? '';
+
+    $generos = $this->novelModel->getAllGeneros();
+    $estados = $this->novelModel->getAllEstados();
+    $novelas = $this->novelModel->buscarNovelas($titulo, $autor, $id_genero, $id_estado);
+
+    require_once __DIR__ . '/../view/consulta.php';
+}
 
     public function edit()
     {
@@ -105,6 +118,14 @@ class NovelasController
             } catch (PDOException $e2) {
                 die("<h2 style='color:red; text-align:center;'>" . htmlspecialchars(mensajeBD($e2)) . "</h2>");
             }
+
+            $novel['titulo']    = $titulo;
+            $novel['sinopsis']  = $sinopsis;
+            $novel['portada']   = $portada;
+            $novel['autor']     = $autor;
+            $novel['id_estado'] = $estado;
+            $novel['id_genero'] = $genero;
+
             $estados = $this->novelModel->getAllEstados();
             $generos = $this->novelModel->getAllGeneros();
             require __DIR__ . "/../view/edit.php";

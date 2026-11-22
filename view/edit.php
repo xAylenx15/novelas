@@ -17,7 +17,6 @@
 
                     <h3 class="mb-4 text-center">Gestión de Novela</h3>
 
-                    <!-- ACÁ SE MUESTRA EL ERROR QUE MANDA POSTGRESQL -->
                     <?php if (!empty($error)): ?>
                         <div class="alert alert-danger" role="alert">
                             <strong>Atención:</strong> <?php echo htmlspecialchars($error); ?>
@@ -27,7 +26,6 @@
                     <form id="formNovela" action="index.php?action=update" method="POST">
                         <input type="hidden" name="novela_id" value="<?php echo $novel['id_novela']; ?>">
 
-                        <!-- NOTA: Se borraron todos los 'required' a propósito -->
                         <div class="mb-3">
                             <label class="form-label text-white">Título de la Novela</label>
                             <input type="text" name="titulo" class="form-control bg-secondary text-white border-0"
@@ -81,7 +79,7 @@
                         <div class="mb-4">
                             <label class="form-label text-white">Sinopsis</label>
                             <textarea name="sinopsis" class="form-control bg-secondary text-white border-0" rows="5"
-                                ><?php echo htmlspecialchars($novel['sinopsis']); ?></textarea>
+                                ><?php echo htmlspecialchars($novel['sinopsis'] ?? ''); ?></textarea>
                         </div>
 
                         <div class="d-flex gap-3 mt-4">

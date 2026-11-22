@@ -61,7 +61,7 @@ class Capitulo {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-       public function updateCapitulo($id, $id_novela, $nombre, $numero, $texto) {
+   public function updateCapitulo($id, $id_novela, $nombre, $numero, $texto) {
     // PHP empaqueta todo tal cual llega y se lo tira a la base de datos
     $datos = [
         'nombre' => $nombre,
@@ -69,7 +69,7 @@ class Capitulo {
         'texto'  => $texto
     ];
 
-    $sql = "SELECT * FROM modificar_capitulo(:id, :id_novela, CAST(:datos_json AS jsonb))";
+    $sql = "SELECT * FROM fn_modificarCapitulo(:id, :id_novela, CAST(:datos_json AS jsonb))";
     $stmt = $this->conn->prepare($sql);
 
     $stmt->execute([
@@ -81,5 +81,6 @@ class Capitulo {
     // Retornamos el registro que devuelve PostgreSQL
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
-} 
+}
+    
 ?>

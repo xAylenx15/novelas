@@ -99,12 +99,13 @@ class CapitulosController
     public function update()
     {
         $id = $_POST['capitulo_id'] ?? null;
+        $id_novela = $_POST['id_novela'] ?? null;
         $nombre = $_POST['nombre'] ?? null;
         $numero = (($_POST["numero"] ?? '') === '') ? null : (int) $_POST["numero"];
         $texto = $_POST['texto'] ?? null;
 
         try {
-            $this->capitulosModel->updateCapitulo($id, $nombre, $numero, $texto);
+            $this->capitulosModel->updateCapitulo($id, $id_novela, $nombre, $numero, $texto);
 
             header("Location: index.php?action=showCapitulo&id=" . $id);
             exit();
@@ -117,6 +118,10 @@ class CapitulosController
             } catch (PDOException $e2) {
                 die("<h2 style='color:red; text-align:center;'>" . htmlspecialchars(mensajeBD($e2)) . "</h2>");
             }
+
+            $capitulo['nombre'] = $nombre;
+            $capitulo['numero'] = $numero;
+            $capitulo['texto'] = $texto;
 
             require_once __DIR__ . '/../view/editarCapitulo.php';
         }

@@ -70,7 +70,9 @@ VALUES
 -- 3. VISTAS
 ---------------------------------------------------------
 
-CREATE OR REPLACE VIEW vw_novelas_completas AS
+
+
+CREATE VIEW vw_novelas_completas AS
 SELECT 
     n.id_novela,
     n.titulo,
@@ -80,10 +82,13 @@ SELECT
     n.id_genero,
     g.nombre AS genero,
     n.id_estado,
-    e.nombre AS estado
+    e.nombre AS estado,
+    COUNT(c.capitulo_id) AS cantidad_capitulos
 FROM novelas n
-LEFT JOIN generos g ON n.id_genero = g.id_genero
-LEFT JOIN estados e ON n.id_estado = e.id_estado;
+JOIN generos g ON n.id_genero = g.id_genero
+JOIN estados e ON n.id_estado = e.id_estado
+LEFT JOIN capitulos c ON n.id_novela = c.id_novela
+GROUP BY n.id_novela, g.nombre, e.nombre;
 
 CREATE OR REPLACE VIEW vw_capitulos_completos AS
 SELECT 
@@ -118,14 +123,17 @@ BEGIN
         RAISE EXCEPTION 'El título no puede estar vacío';
     END IF;
 
+	IF length(btrim(ptitulo)) > 255 THEN
+    	RAISE EXCEPTION 'El título no puede superar los 255 caracteres';
+	END IF;
+
     IF pportada IS NULL OR btrim(pportada) = '' THEN
         RAISE EXCEPTION 'La portada no puede estar vacía';
     END IF;
 
-    IF pportada NOT LIKE 'http://%' AND pportada NOT LIKE 'https://%' THEN
-        RAISE EXCEPTION 'La portada debe ser una dirección válida (http:// o https://)';
-    END IF;
-
+    IF lower(btrim(pportada)) NOT LIKE 'http://%' AND lower(btrim(pportada)) NOT LIKE 'https://%' THEN
+    	RAISE EXCEPTION 'La portada debe ser una dirección válida (http:// o https://)';
+	END IF;
     IF p_id_genero IS NULL THEN
         RAISE EXCEPTION 'Debe seleccionar un género';
     END IF;
@@ -143,13 +151,16 @@ BEGIN
     END IF;
 
     v_autor := COALESCE(NULLIF(btrim(pautor), ''), 'Desconocido');
+	IF lower(v_autor) = 'desconocido' THEN
+    	v_autor := 'Desconocido';
+	END IF;
     
     IF EXISTS (SELECT 1 FROM novelas WHERE titulo = btrim(ptitulo) AND autor = v_autor) THEN
         RAISE EXCEPTION 'Ya existe una novela con ese titulo y autor';
     END IF;
 
-    INSERT INTO novelas (titulo, sinopsis, portada, id_estado, id_genero, autor)
-    VALUES (btrim(ptitulo), psinopsis, pportada, p_id_estado, p_id_genero, v_autor)
+INSERT INTO novelas (titulo, sinopsis, portada, id_estado, id_genero, autor)
+VALUES (btrim(ptitulo), btrim(psinopsis), btrim(pportada), p_id_estado, p_id_genero, v_autor)
     RETURNING id_novela INTO v_id;
 
     RETURN v_id;
@@ -180,138 +191,238 @@ LANGUAGE plpgsql;
 
 
 
+-- Funcion para modificar novela
+
 CREATE OR REPLACE FUNCTION fn_modificar_novela(
     p_id_novela INT,
     p_Datos_A_Modificar JSONB
 )
-RETURNS novelas AS $$
+RETURNS novelas
+AS $$
 DECLARE
     var_aux novelas;
     var_textual TEXT;
     var_clave TEXT;
-    var_id INT;
+	var_id int;
+	var_numeric numeric;
     v_hubo_cambios BOOLEAN := FALSE;
 BEGIN
+    -- 1. Comprobar que los datos no sean SQL NULL
     IF p_Datos_A_Modificar IS NULL THEN
         RAISE EXCEPTION 'Los datos para modificar no pueden ser nulos';
     END IF;
 
-    IF jsonb_typeof(p_Datos_A_Modificar) IS DISTINCT FROM 'object' THEN
+    -- 2. Comprobar que el JSONB sea un objeto
+    IF jsonb_typeof(p_Datos_A_Modificar)
+       IS DISTINCT FROM 'object' THEN
         RAISE EXCEPTION 'Los datos deben ser un objeto JSON válido';
     END IF;
 
+    -- 3. Comprobar que el objeto no esté vacío
     IF p_Datos_A_Modificar = '{}'::jsonb THEN
         RAISE EXCEPTION 'No se especificaron datos para modificar';
     END IF;
 
-    IF (SELECT COUNT(*) FROM jsonb_object_keys(p_Datos_A_Modificar)) > 6 THEN
+    -- 4. Comprobar que no tenga más de seis claves
+    IF (
+        SELECT COUNT(*)
+        FROM jsonb_object_keys(p_Datos_A_Modificar)
+    ) > 6 THEN
         RAISE EXCEPTION 'No se pueden modificar más de seis campos';
     END IF;
 
-    FOR var_clave IN SELECT jsonb_object_keys(p_Datos_A_Modificar) LOOP
-        IF var_clave NOT IN ('titulo', 'sinopsis', 'portada', 'autor', 'id_genero', 'id_estado') THEN
+    -- 5. Comprobar que las claves sean válidas
+    FOR var_clave IN
+        SELECT jsonb_object_keys(p_Datos_A_Modificar)
+    LOOP
+        IF var_clave NOT IN (
+            'titulo', 'sinopsis', 'portada',
+            'autor', 'genero', 'estado'
+        ) THEN
             RAISE EXCEPTION 'Clave inválida: %', var_clave;
         END IF;
     END LOOP;
 
-    SELECT * INTO var_aux FROM novelas WHERE id_novela = p_id_novela;
+    -- 6. Buscar la novela
+    SELECT *
+    INTO var_aux
+    FROM novelas
+    WHERE id_novela = p_id_novela;
+
     IF NOT FOUND THEN
         RAISE EXCEPTION 'No se encontró ninguna novela con ese ID';
     END IF;
 
+    -- 7. Modificar el título
     IF p_Datos_A_Modificar ? 'titulo' THEN
-        IF jsonb_typeof(p_Datos_A_Modificar -> 'titulo') IS DISTINCT FROM 'string' THEN
+
+        IF jsonb_typeof(p_Datos_A_Modificar -> 'titulo')
+           IS DISTINCT FROM 'string' THEN
             RAISE EXCEPTION 'El nuevo valor para el título no es válido';
         END IF;
+
         var_textual := btrim(p_Datos_A_Modificar ->> 'titulo');
-        IF btrim(var_textual) = '' THEN
-            RAISE EXCEPTION 'No se puede ingresar una cadena vacía';
+
+        IF var_textual = '' THEN
+            RAISE EXCEPTION 'No se puede ingresar una cadena vacía para el titulo';
         END IF;
+		
         IF var_textual IS DISTINCT FROM var_aux.titulo THEN
             var_aux.titulo := var_textual;
             v_hubo_cambios := TRUE;
         END IF;
     END IF;
 
+    -- 8. Modificar la sinopsis
     IF p_Datos_A_Modificar ? 'sinopsis' THEN
-        IF jsonb_typeof(p_Datos_A_Modificar -> 'sinopsis') IS DISTINCT FROM 'string' AND jsonb_typeof(p_Datos_A_Modificar -> 'sinopsis') IS DISTINCT FROM 'null' THEN
+
+        IF jsonb_typeof(p_Datos_A_Modificar -> 'sinopsis')
+           IS DISTINCT FROM 'string'
+           AND jsonb_typeof(p_Datos_A_Modificar -> 'sinopsis')
+           IS DISTINCT FROM 'null' THEN
             RAISE EXCEPTION 'El nuevo valor para la sinopsis no es válido';
         END IF;
-        var_textual := p_Datos_A_Modificar ->> 'sinopsis';
+
+        var_textual := btrim(p_Datos_A_Modificar ->> 'sinopsis');
+
+		-- la sinopsis puede retener una cadena vacia
         IF var_textual IS DISTINCT FROM var_aux.sinopsis THEN
             var_aux.sinopsis := var_textual;
             v_hubo_cambios := TRUE;
         END IF;
     END IF;
 
+    -- 9. Modificar la portada
     IF p_Datos_A_Modificar ? 'portada' THEN
-        IF jsonb_typeof(p_Datos_A_Modificar -> 'portada') IS DISTINCT FROM 'string' THEN
+
+        IF jsonb_typeof(p_Datos_A_Modificar -> 'portada')
+           IS DISTINCT FROM 'string' THEN
             RAISE EXCEPTION 'El nuevo valor para la portada no es válido';
         END IF;
-        var_textual := p_Datos_A_Modificar ->> 'portada';
-        IF btrim(var_textual) = '' THEN
-            RAISE EXCEPTION 'No se puede ingresar una cadena vacía';
+
+        var_textual := btrim(p_Datos_A_Modificar ->> 'portada');
+
+        IF (var_textual) = '' THEN
+            RAISE EXCEPTION 'No se puede ingresar una cadena vacía para la portada';
         END IF;
-        IF var_textual LIKE 'http://%' OR var_textual LIKE 'https://%' THEN
+		-- rdta parte no garantiza que sea un url valido
+        IF lower(var_textual) LIKE 'http://%'
+           OR lower(var_textual) LIKE 'https://%' THEN
+
             IF var_textual IS DISTINCT FROM var_aux.portada THEN
                 var_aux.portada := var_textual;
                 v_hubo_cambios := TRUE;
             END IF;
+
         ELSE
-            RAISE EXCEPTION 'No es una dirección válida';
+            RAISE EXCEPTION 'No es una dirección válida para la portada';
         END IF;
     END IF;
 
+    -- 10. Modificar el autor
     IF p_Datos_A_Modificar ? 'autor' THEN
-        IF jsonb_typeof(p_Datos_A_Modificar -> 'autor') IS DISTINCT FROM 'string' AND jsonb_typeof(p_Datos_A_Modificar -> 'autor') IS DISTINCT FROM 'null' THEN
+
+        IF jsonb_typeof(p_Datos_A_Modificar -> 'autor')
+           IS DISTINCT FROM 'string' 
+		   AND jsonb_typeof(p_Datos_A_Modificar -> 'autor')
+		   IS DISTINCT FROM 'null' THEN
             RAISE EXCEPTION 'El nuevo valor para el autor no es válido';
         END IF;
+
         var_textual := btrim(p_Datos_A_Modificar ->> 'autor');
-        IF btrim(var_textual) = '' OR var_textual IS NULL THEN 
-            var_textual := 'Desconocido';
-        END IF;
+
+        IF (var_textual) = '' OR var_textual is NULL then 
+			var_textual:= 'Desconocido';
+		end if;
+
+		IF lower(var_textual) = 'desconocido' THEN
+    		var_textual := 'Desconocido';
+		END IF;
+
         IF var_textual IS DISTINCT FROM var_aux.autor THEN
             var_aux.autor := var_textual;
             v_hubo_cambios := TRUE;
         END IF;
     END IF;
 
-    IF p_Datos_A_Modificar ? 'id_genero' THEN
-        IF jsonb_typeof(p_Datos_A_Modificar -> 'id_genero') IS DISTINCT FROM 'number' THEN
+    -- 11. Modificar el género
+    IF p_Datos_A_Modificar ? 'genero' THEN
+
+        IF jsonb_typeof(p_Datos_A_Modificar -> 'genero')
+           IS DISTINCT FROM 'number' THEN
             RAISE EXCEPTION 'El nuevo valor para el género no es válido';
         END IF;
-        var_id := (p_Datos_A_Modificar ->> 'id_genero')::INT;
-        IF NOT EXISTS (SELECT 1 FROM generos WHERE id_genero = var_id) THEN 
-            RAISE EXCEPTION 'El genero pasado no corresponde con ninguna de las opciones';
-        END IF;
-        IF var_id IS DISTINCT FROM var_aux.id_genero THEN
-            var_aux.id_genero := var_id;
-            v_hubo_cambios := TRUE;
-        END IF;
+
+		var_numeric:= (p_Datos_A_Modificar ->> 'genero')::numeric;
+		if var_numeric > 2147483647 then
+			raise exception 'El valor pasado para genero supera el limite de int';
+		end if;
+		if var_numeric <= 0 then 
+			raise exception 'El valo pasado para genero no puede ser negativo o cero';
+		end if;
+		if trunc(var_numeric)!= var_numeric then 
+			raise exception 'El valor pasado para genero no corresponde a un numero entero';
+		end if;
+        var_id := (var_numeric)::int;
+		IF NOT EXISTS (SELECT 1
+    				   FROM generos
+    				   WHERE id_genero = var_id
+		) THEN
+    		RAISE EXCEPTION 'El género indicado no existe';
+		END IF;
+		if var_id is distinct from var_aux.id_genero then
+			var_aux.id_genero := var_id;
+			v_hubo_cambios := true;
+		end if;
     END IF;
 
-    IF p_Datos_A_Modificar ? 'id_estado' THEN
-        IF jsonb_typeof(p_Datos_A_Modificar -> 'id_estado') IS DISTINCT FROM 'number' THEN
+    -- 12. Modificar el estado
+    IF p_Datos_A_Modificar ? 'estado' THEN
+
+        IF jsonb_typeof(p_Datos_A_Modificar -> 'estado')
+           IS DISTINCT FROM 'number' THEN
             RAISE EXCEPTION 'El nuevo valor para el estado no es válido';
         END IF;
-        var_id := (p_Datos_A_Modificar ->> 'id_estado')::INT;
-        IF NOT EXISTS (SELECT 1 FROM estados WHERE id_estado = var_id) THEN 
-            RAISE EXCEPTION 'El estado pasado no corresponde a ninguna de las opciones';
-        END IF;
-        IF var_id IS DISTINCT FROM var_aux.id_estado THEN
-            var_aux.id_estado := var_id;
-            v_hubo_cambios := TRUE;
-        END IF;
+
+        var_numeric:= (p_Datos_A_Modificar ->> 'estado')::numeric;
+		if var_numeric > 2147483647 then
+			raise exception 'El valor pasado para estado supera el limite de int';
+		end if;
+		if var_numeric <= 0 then 
+			raise exception 'El valor pasado para estado no puede ser negativo o cero';
+		end if;
+		if trunc(var_numeric)!= var_numeric then 
+			raise exception 'El valor pasado para estado no corresponde a un numero entero';
+		end if;
+        var_id := (var_numeric)::int;
+		IF NOT EXISTS (SELECT 1
+    				   FROM estados
+    				   WHERE id_estado = var_id
+		) THEN
+    		RAISE EXCEPTION 'El estado indicado no existe';
+		END IF;
+		if var_id is distinct from var_aux.id_estado then
+			var_aux.id_estado := var_id;
+			v_hubo_cambios := true;
+		end if;
     END IF;
 
+    -- 13. Comprobar que haya habido al menos una modificación
     IF NOT v_hubo_cambios THEN
         RAISE EXCEPTION 'No se realizaron modificaciones';
     END IF;
 
-    IF EXISTS (SELECT 1 FROM novelas WHERE autor = var_aux.autor AND titulo = var_aux.titulo AND id_novela IS DISTINCT FROM p_id_novela) THEN
-        RAISE EXCEPTION 'Ya existe una novela con ese titulo y autor';
-    END IF;
+	-- Antes de guardar los cambios en la tabla controlaremos que no exista una novela
+ 	-- con esas caracteristicas 
+	if (exists (select 1
+				from novelas 
+				where autor = var_aux.autor
+				and titulo = var_aux.titulo
+				and id_novela is distinct from p_id_novela)) then
+ 		raise exception 'Ya existe una novela con ese titulo y autor';
+	end if;
 
+    -- 14. Guardar los cambios en la tabla
     UPDATE novelas
     SET
         titulo = var_aux.titulo,
@@ -323,11 +434,14 @@ BEGIN
     WHERE id_novela = p_id_novela
     RETURNING * INTO var_aux;
 
+    -- 15. Comprobar que se haya actualizado la novela
     IF NOT FOUND THEN
         RAISE EXCEPTION 'No se pudo actualizar la novela';
     END IF;
 
+    -- 16. Devolver la novela actualizada
     RETURN var_aux;
+
 END;
 $$ LANGUAGE plpgsql;
 
@@ -349,9 +463,9 @@ BEGIN
         RAISE EXCEPTION 'El ID de la novela y el número de capítulo son obligatorios';
     END IF;
 
-    IF btrim(COALESCE(p_nombre, '')) = '' THEN
-        RAISE EXCEPTION 'El nombre del capítulo no puede estar vacío';
-    END IF;
+    IF length(btrim(COALESCE(p_nombre, ''))) > 255 THEN
+    	RAISE EXCEPTION 'El nombre no puede superar los 255 caracteres';
+	END IF;
 
     IF btrim(COALESCE(p_texto, '')) = '' THEN
         RAISE EXCEPTION 'El texto del capítulo no puede estar vacío';
@@ -370,7 +484,8 @@ BEGIN
     END IF;
 
     INSERT INTO capitulos (id_novela, nombre, numero, texto)
-    VALUES (p_id_novela, btrim(p_nombre), p_numero, btrim(p_texto))
+	VALUES (p_id_novela, NULLIF(btrim(p_nombre), ''), p_numero, btrim(p_texto))
+
     RETURNING capitulo_id INTO v_nuevo_id;
 
     RETURN v_nuevo_id;
@@ -391,7 +506,6 @@ BEGIN
     RETURN 'Capítulo eliminado correctamente';
 END;
 $$ LANGUAGE plpgsql;
-
 
 
 CREATE OR REPLACE FUNCTION fn_modificarCapitulo(
@@ -550,6 +664,7 @@ BEGIN
 END;
 $$
 language plpgsql;
+
 
 ---------------------------------------------------------
 -- 6. FUNCIONES DE LECTURA DE PÁGINA

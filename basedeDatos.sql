@@ -170,7 +170,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION fn_baja_novela(p_id_novela INT)
-RETURNS VOID
+RETURNS TEXT
 AS
 $$
 BEGIN
@@ -183,7 +183,7 @@ BEGIN
     DELETE FROM novelas
     WHERE id_novela = p_id_novela;
 
-    RAISE NOTICE 'Novela eliminada correctamente';
+    RETURN 'Novela eliminada correctamente';
 
 END;
 $$
